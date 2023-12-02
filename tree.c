@@ -4,11 +4,13 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#define MAX_OPEN_DIRS 1000
+
 int compare(const void *a, const void *b) {
     return strcmp(*(const char **)a, *(const char **)b);
 }
 
-void listDir(const char *dirName, int depth) {
+void listDir(const char *dirName, int depth, int *openDirs) {
     struct stat statbuf;
     if (stat(dirName, &statbuf) == -1) {
         perror("stat");
@@ -20,6 +22,8 @@ void listDir(const char *dirName, int depth) {
         perror("opendir");
         return;
     }
+
+    openDirs[depth] = 1;
 
     char **stuff = NULL;
     int numStuff = 0;
@@ -36,6 +40,7 @@ void listDir(const char *dirName, int depth) {
     }
 
     closedir(dir);
+    openDirs[depth] = 0;
 
     qsort(stuff, numStuff, sizeof(char *), compare);
 
@@ -50,7 +55,11 @@ void listDir(const char *dirName, int depth) {
         snprintf(path, sizeof(path), "%s/%s", dirName, stuff[i]);
 
         if (stat(path, &statbuf) == 0 && S_ISDIR(statbuf.st_mode)) {
-            listDir(path, depth + 1);
+            if (*openDirs < MAX_OPEN_DIRS) {
+                listDir(path, depth + 1, openDirs);
+            } else {
+                printf("|   |-- (Reached maximum open directories)\n");
+            }
         }
 
         free(stuff[i]);
@@ -61,6 +70,7 @@ void listDir(const char *dirName, int depth) {
 
 int main(int argc, char *argv[]) {
     const char *name;
+    int openDirs[MAX_OPEN_DIRS] = {0};
 
     if (argc < 2) {
         name = "."; // If no argument provided, use the current directory
@@ -69,6 +79,6 @@ int main(int argc, char *argv[]) {
     }
 
     printf("%s\n", name);
-    listDir(name, 0);
+    listDir(name, 0, openDirs);
     return 0;
 }
