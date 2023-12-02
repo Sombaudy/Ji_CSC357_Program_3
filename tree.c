@@ -78,7 +78,17 @@ int main(int argc, char *argv[]) {
         name = argv[1];
     }
 
-    printf("%s\n", name);
-    listDir(name, 0, openDirs);
+    struct stat statbuf;
+    if (stat(name, &statbuf) == -1) {
+        perror(name);
+        return 1;
+    }
+
+    if (S_ISREG(statbuf.st_mode)) {
+        printf("%s\n", name); // Print the file name only
+    } else {
+        printf("%s\n", name); // Print the directory name
+        listDir(name, 0, openDirs);
+    }
     return 0;
 }
